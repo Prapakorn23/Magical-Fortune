@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Birthday – A Magical Fortune 🎂</title>
+  <meta name="description" content="An interactive birthday tarot experience with postcard export." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Kanit:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
+    rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+            sans: ['Kanit', 'system-ui', 'sans-serif'],
+            script: ['Great Vibes', 'cursive'],
+          },
+          colors: {
+            felt: { 900: '#0a1f0a', 800: '#0d2b0d', 700: '#133613', 600: '#1a4a1a' },
+            gold: { 300: '#ffd966', 400: '#f5c542', 500: '#d4a017', 600: '#b8860b' },
+          },
+          keyframes: {
+            shimmer: { '0%, 100%': { opacity: '0.4' }, '50%': { opacity: '0.8' } },
+            float: { '0%, 100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-12px)' } },
+            pulseGlow: {
+              '0%, 100%': { boxShadow: '0 0 15px rgba(212,160,23,0.3), 0 0 30px rgba(212,160,23,0.1)' },
+              '50%': { boxShadow: '0 0 25px rgba(212,160,23,0.5), 0 0 50px rgba(212,160,23,0.2)' },
+            },
+            sparkle: {
+              '0%': { transform: 'scale(0) rotate(0deg)', opacity: '1' },
+              '50%': { transform: 'scale(1) rotate(180deg)', opacity: '0.8' },
+              '100%': { transform: 'scale(0) rotate(360deg)', opacity: '0' },
+            },
+            confetti: {
+              '0%': { transform: 'translateY(0) rotate(0deg)', opacity: '1' },
+              '100%': { transform: 'translateY(100vh) rotate(720deg)', opacity: '0' },
+            },
+            shuffleDeck: {
+              '0%, 100%': { transform: 'rotate(0deg) translate(0,0)' },
+              '25%': { transform: 'rotate(-3deg) translate(-3px, -2px)' },
+              '50%': { transform: 'rotate(3deg) translate(3px, 2px)' },
+              '75%': { transform: 'rotate(-2deg) translate(-2px, 1px)' },
+            }
+          },
+          animation: {
+            shimmer: 'shimmer 3s ease-in-out infinite',
+            float: 'float 4s ease-in-out infinite',
+            pulseGlow: 'pulseGlow 2.5s ease-in-out infinite',
+            sparkle: 'sparkle 0.8s ease-out forwards',
+            confetti: 'confetti 3s ease-out forwards',
+            shuffleDeck: 'shuffleDeck 0.15s ease-in-out infinite',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% 40%, #1a4a1a 0%, #0d2b0d 40%, #0a1f0a 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='60' height='60' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #entrance-screen {
+      transition: opacity 0.8s ease-in-out;
+    }
+
+    .door-panel {
+      transition: transform 1.2s cubic-bezier(0.65, 0, 0.15, 1);
+    }
+
+    .door-pattern {
+      background: linear-gradient(135deg, #0a1f0a 0%, #133613 50%, #0a1f0a 100%);
+      background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(212, 160, 23, 0.03) 10px, rgba(212, 160, 23, 0.03) 11px);
+    }
+
+    .door-left-open {
+      transform: translateX(-100%);
+    }
+
+    .door-right-open {
+      transform: translateX(100%);
+    }
+
+    /* ── 3D Card Animation ── */
+    .card-scene {
+      perspective: 1200px;
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      /* หมุนช้าๆ ให้ดูลุ้น */
+    }
+
+    .card-inner.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    @media (min-width: 640px) {
+      .card-face {
+        border-radius: 12px;
+      }
+    }
+
+    .card-front {
+      transform: rotateY(180deg);
+    }
+
+    .card-back {
+      transform: rotateY(0deg);
+    }
+
+    .tarot-back-pattern {
+      background: linear-gradient(135deg, #3b0764 0%, #1e1b4b 50%, #0f172a 100%);
+      background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(212, 160, 23, 0.1) 6px, rgba(212, 160, 23, 0.1) 7px),
+        repeating-linear-gradient(-45deg, transparent, transparent 6px, rgba(212, 160, 23, 0.1) 6px, rgba(212, 160, 23, 0.1) 7px),
+        linear-gradient(135deg, #3b0764 0%, #1e1b4b 50%, #0f172a 100%);
+    }
+
+    .deck-stack {
+      transition: all 0.5s ease;
+    }
+
+    .deck-stack:hover:not(.is-shuffling) {
+      transform: translateY(-6px) scale(1.02);
+      cursor: pointer;
+    }
+
+    .deck-shadow-1 {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      transform: translate(3px, 3px);
+      background: rgba(0, 0, 0, 0.25);
+      z-index: -1;
+    }
+
+    .deck-shadow-2 {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      transform: translate(6px, 6px);
+      background: rgba(0, 0, 0, 0.18);
+      z-index: -2;
+    }
+
+    .is-shuffling {
+      animation: shuffleDeck 0.15s ease-in-out infinite !important;
+      filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.8));
+    }
+
+    .sparkle-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .confetti-piece {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      top: -10px;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .ambient-particle {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      animation: ambientFloat linear infinite;
+    }
+
+    @keyframes ambientFloat {
+      0% {
+        transform: translateY(100vh) scale(0);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 0.6;
+      }
+
+      90% {
+        opacity: 0.6;
+      }
+
+      100% {
+        transform: translateY(-20vh) scale(1);
+        opacity: 0;
+      }
+    }
+
+    /* ── Dealt Cards Layout & Hover ── */
+    .dealt-card {
+      opacity: 0;
+      /* ลอยลงมาจากด้านบนพร้อมหมุนตีลังกา */
+      transform: translateY(-200px) scale(0.5) rotate(-180deg);
+      transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+      position: relative;
+    }
+
+    .dealt-card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1) rotate(0deg);
+    }
+
+    /* เอฟเฟกต์ตอนชี้ไพ่ */
+    .dealt-card.visible:not(.unselected):not(.selected):hover {
+      transform: translateY(-12px) scale(1.08);
+      box-shadow: 0 15px 30px rgba(212, 160, 23, 0.4), 0 0 20px rgba(168, 85, 247, 0.5);
+      z-index: 20;
+    }
+
+    /* ── ออร่าด้านหลังไพ่ตอนถูกเลือก ── */
+    .card-aura {
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle, rgba(212, 160, 23, 0.6) 0%, rgba(168, 85, 247, 0.3) 40%, transparent 70%);
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+      z-index: -1;
+      transition: opacity 1s;
+    }
+
+    /* ── State ไพ่ใบที่ไม่เลือก (จางและร่วงลง) ── */
+    .dealt-card.unselected {
+      opacity: 0;
+      transform: translateY(80px) scale(0.7) rotate(5deg);
+      pointer-events: none;
+    }
+
+    /* ── State ไพ่ใบที่ถูกเลือก (ลอยตรงกลาง ใหญ่ขึ้น มีออร่า) ── */
+    .dealt-card.selected {
+      transform: scale(1.4) translateY(-10px);
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    @media (min-width: 640px) {
+      .dealt-card.selected {
+        transform: scale(1.8) translateY(-20px);
+      }
+    }
+
+    .dealt-card.selected .card-aura {
+      opacity: 1;
+      animation: pulseGlow 2s infinite;
+    }
+
+    .action-btn {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      display: none;
+    }
+
+    .action-btn.visible {
+      opacity: 1;
+      transform: translateY(0);
+      display: block;
+    }
+
+    #fortune-teller-box {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+      display: none;
+    }
+
+    #fortune-teller-box.visible {
+      opacity: 1;
+      transform: translateY(0);
+      display: flex;
+    }
+
+    #postcard-template {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
+    }
+  </style>
+</head>
+
+<body class="font-sans text-white relative">
+
+  <!-- ─── ENTRANCE DOOR ────────────────────────── -->
+  <div id="entrance-screen" class="fixed inset-0 z-[100] flex overflow-hidden bg-black">
+    <div id="door-left"
+      class="door-panel w-1/2 h-full door-pattern border-r-2 border-gold-500/60 relative flex items-center justify-end z-10 shadow-[5px_0_15px_rgba(0,0,0,0.5)]">
+      <div class="absolute inset-4 border border-gold-500/20 rounded-l-lg border-r-0"></div>
+    </div>
+    <div id="door-right"
+      class="door-panel w-1/2 h-full door-pattern border-l-2 border-gold-500/60 relative flex items-center justify-start z-10 shadow-[-5px_0_15px_rgba(0,0,0,0.5)]">
+      <div class="absolute inset-4 border border-gold-500/20 rounded-r-lg border-l-0"></div>
+    </div>
+    <div id="door-lock"
+      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center transition-all duration-700">
+      <p
+        class="font-script text-3xl sm:text-4xl text-gold-400 mb-6 tracking-wide drop-shadow-[0_0_10px_rgba(212,160,23,0.5)] text-center">
+        A Magical Birthday<br>Awaits
+      </p>
+      <button onclick="openDoor()"
+        class="group relative flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-gold-500/80 bg-felt-900 shadow-[0_0_30px_rgba(212,160,23,0.4)] hover:shadow-[0_0_50px_rgba(212,160,23,0.8)] transition-all duration-300 hover:scale-105 cursor-pointer">
+        <div class="absolute inset-1 rounded-full border border-gold-400/50 animate-pulseGlow"></div>
+        <div class="flex flex-col items-center">
+          <span class="text-3xl sm:text-4xl text-gold-300 mb-1 group-hover:animate-bounce">✨</span>
+          <span class="font-sans text-xs sm:text-sm text-gold-200 uppercase tracking-widest font-semibold">Enter</span>
+        </div>
+      </button>
+      <p class="mt-6 font-sans text-xs text-gold-500/60 uppercase tracking-widest animate-pulse">
+        Tap to open the door
+      </p>
+    </div>
+  </div>
+
+  <div id="ambient-particles" class="fixed inset-0 z-0 pointer-events-none"></div>
+
+  <!-- ─── MAIN CONTENT ─────────────────────────── -->
+  <main class="relative z-10 flex flex-col items-center justify-center min-h-screen py-10 px-4">
+
+    <!-- Title -->
+    <header id="hero-title" class="text-center mb-6 transition-all duration-700 z-20">
+      <h1 class="font-script text-5xl sm:text-6xl md:text-7xl text-gold-400 mb-2"
+        style="text-shadow: 0 0 30px rgba(212,160,23,0.3);">
+        Happy Birthday!
+      </h1>
+      <div id="hero-subtitle-container" class="h-[40px] flex items-center justify-center mt-2">
+        <p id="hero-subtitle"
+          class="font-sans text-sm sm:text-base text-purple-300/80 tracking-widest uppercase animate-pulseGlow">
+          รับคำทำนายดวงชะตาในปีนี้ของคุณ
+        </p>
+      </div>
+    </header>
+
+    <!-- ─── THE DECK ────────────────────────────── -->
+    <section id="deck-section" class="relative flex flex-col items-center z-10">
+      <div
+        class="absolute inset--8 rounded-full background: radial-gradient(circle, rgba(212,160,23,0.08) 0%, transparent 70%); animate-shimmer pointer-events-none">
+      </div>
+
+      <!-- เพิ่ม ID สำหรับจัดการคลิก -->
+      <div id="card-deck"
+        class="deck-stack animate-pulseGlow rounded-xl flex-none w-[160px] sm:w-[220px] aspect-[2/3] border-2 border-purple-500/60 tarot-back-pattern flex flex-col items-center justify-center relative overflow-hidden"
+        onclick="dealCards()" style="box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(168,85,247,0.3);">
+        <div class="deck-shadow-1"></div>
+        <div class="deck-shadow-2"></div>
+        <div class="absolute inset-2 sm:inset-3 border border-gold-400/30 rounded-lg"></div>
+
+        <div
+          class="w-12 h-12 sm:w-16 sm:h-16 border-2 border-gold-400/60 rotate-45 flex items-center justify-center mb-4">
+          <span class="text-gold-300 text-2xl sm:text-3xl -rotate-45">🔮</span>
+        </div>
+
+        <div
+          class="px-4 py-1.5 bg-gradient-to-r from-purple-900/50 via-purple-800/80 to-purple-900/50 rounded-full border border-purple-400/40 mt-2 sm:mt-4 backdrop-blur-sm">
+          <span class="font-sans text-xs sm:text-sm text-purple-200 tracking-wider font-medium">Tarot Deck</span>
+        </div>
+      </div>
+
+      <p id="deck-hint"
+        class="animate-float mt-6 text-purple-300/80 text-sm tracking-wider font-sans flex items-center gap-2">
+        <span class="text-gold-400">✨</span> แตะที่กองไพ่เพื่อเริ่มทำนาย <span class="text-gold-400">✨</span>
+      </p>
+    </section>
+
+    <!-- ─── DEALT CARDS AREA ────────────────────── -->
+    <section id="dealt-area" class="mt-2 w-full max-w-5xl pb-10 relative z-10" style="display:none;">
+
+      <div class="flex flex-wrap justify-center gap-2 sm:gap-4 lg:gap-6 px-2 w-full mx-auto" id="dealt-cards-container">
+        <!-- Cards injected by JS -->
+      </div>
+
+      <!-- กล่องข้อความแม่หมอ + ฟีเจอร์แชร์ -->
+      <div id="fortune-teller-box" class="w-full max-w-2xl mx-auto mt-20 flex-col items-center px-4 relative z-0">
+        <div
+          class="relative bg-gradient-to-br from-indigo-950/90 to-purple-900/90 border border-purple-500/50 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-[0_0_50px_rgba(168,85,247,0.3)] w-full">
+          <div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-gold-400/60"></div>
+          <div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-gold-400/60"></div>
+          <div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-gold-400/60"></div>
+          <div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-gold-400/60"></div>
+
+          <div class="flex items-center gap-4 mb-4 border-b border-purple-500/30 pb-4">
+            <div
+              class="w-12 h-12 flex-none rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center border-2 border-gold-400/80 shadow-[0_0_15px_rgba(212,160,23,0.4)]">
+              <span class="text-2xl animate-pulse">🔮</span>
+            </div>
+            <div>
+              <h4 class="font-sans text-base sm:text-lg text-gold-300 font-semibold tracking-wide">คำทำนายจากแม่หมอ</h4>
+              <p id="fortune-card-name"
+                class="font-sans text-[10px] sm:text-xs text-purple-300 uppercase tracking-widest"></p>
+            </div>
+          </div>
+
+          <p id="fortune-message" class="font-sans text-sm sm:text-base text-gray-200 leading-relaxed min-h-[60px]"></p>
+
+          <div class="mt-6 pt-6 border-t border-purple-500/30 flex flex-col items-center gap-4">
+            <p class="font-sans text-sm text-gold-300 font-medium">💌 สร้างโปสการ์ดคำทำนายพร้อมรูปภาพของคุณ</p>
+            <div class="flex flex-col sm:flex-row gap-3 w-full justify-center">
+              <label
+                class="cursor-pointer px-4 py-2 bg-purple-800/60 hover:bg-purple-700 border border-purple-400/50 rounded-full text-sm font-sans transition flex items-center justify-center gap-2 shadow-lg">
+                <span>📸 อัปโหลดรูปภาพ</span>
+                <input type="file" id="photo-upload" accept="image/*" class="hidden"
+                  onchange="handleImageUpload(event)" />
+              </label>
+              <button id="export-btn"
+                class="px-4 py-2 bg-gold-600/50 hover:bg-gold-500 border border-gold-400/50 rounded-full text-sm font-sans transition flex items-center justify-center gap-2 opacity-50 cursor-not-allowed shadow-lg"
+                disabled onclick="exportPostcard()">
+                📥 ดาวน์โหลดโปสการ์ด
+              </button>
+            </div>
+            <span id="upload-status" class="text-xs text-emerald-400 font-sans hidden animate-pulse">รูปภาพพร้อมแล้ว!
+              กดดาวน์โหลดได้เลย</span>
+          </div>
+        </div>
+
+        <button id="reset-btn"
+          class="mt-8 action-btn px-6 py-2.5 rounded-full border border-gold-500/40 bg-gold-500/10 text-gold-300 font-sans text-sm tracking-wider hover:bg-gold-500/20 hover:scale-105 transition-all duration-300 cursor-pointer"
+          onclick="resetDeck()">
+          ✦ เริ่มสุ่มคำทำนายใหม่อีกครั้ง ✦
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ─── HIDDEN POSTCARD TEMPLATE ─── -->
+  <div id="postcard-template" class="w-[800px] h-[500px] flex p-8 box-border overflow-hidden relative"
+    style="background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 50%, #0f172a 100%);">
+    <div
+      style="position: absolute; top: 16px; left: 16px; right: 16px; bottom: 16px; border: 2px solid rgba(212,160,23,0.5); border-radius: 16px; pointer-events: none;">
+    </div>
+    <div class="w-1/2 h-full pr-4 flex flex-col justify-center relative z-10">
+      <div
+        style="width: 100%; height: 100%; border: 4px solid rgba(212,160,23,0.8); border-radius: 12px; padding: 4px; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+        <img id="pc-image" src="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;"
+          alt="Uploaded Photo" />
+      </div>
+    </div>
+    <div class="w-1/2 h-full pl-6 flex flex-col justify-center relative z-10 text-white"
+      style="font-family: 'Kanit', sans-serif;">
+      <h1
+        style="font-family: 'Great Vibes', cursive; color: #f5c542; font-size: 56px; margin-bottom: -10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+        Happy Birthday</h1>
+      <div style="width: 60px; height: 2px; background: rgba(212,160,23,0.6); margin-bottom: 20px; margin-top: 15px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <span id="pc-icon" style="font-size: 40px;">🔮</span>
+        <div>
+          <h2 id="pc-title" style="color: #ffd966; font-size: 24px; font-weight: bold; line-height: 1.2; margin: 0;">
+            Card Title</h2>
+          <p id="pc-subtitle"
+            style="color: #d8b4fe; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin: 0;">Card
+            Subtitle</p>
+        </div>
+      </div>
+      <div
+        style="background: rgba(88, 28, 135, 0.4); border: 1px solid rgba(168, 85, 247, 0.4); padding: 16px; border-radius: 12px;">
+        <p id="pc-meaning" style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0;">Your fortune meaning
+          goes here...</p>
+      </div>
+      <p style="color: rgba(212,160,23,0.6); font-size: 12px; text-align: right; margin-top: auto; margin-bottom: 0;">A
+        Magical Birthday Fortune ✨</p>
+    </div>
+  </div>
+
+  <!-- ─── JAVASCRIPT ────────────────────────────── -->
+  <script>
+    function openDoor() {
+      const lock = document.getElementById('door-lock');
+      const leftDoor = document.getElementById('door-left');
+      const rightDoor = document.getElementById('door-right');
+      const entranceScreen = document.getElementById('entrance-screen');
+
+      lock.style.opacity = '0';
+      lock.style.transform = 'translate(-50%, -50%) scale(1.5)';
+      lock.style.pointerEvents = 'none';
+
+      setTimeout(() => {
+        leftDoor.classList.add('door-left-open');
+        rightDoor.classList.add('door-right-open');
+      }, 400);
+
+      setTimeout(() => {
+        entranceScreen.style.opacity = '0';
+        setTimeout(() => entranceScreen.style.display = 'none', 800);
+      }, 1200);
+    }
+
+    const fortuneData = [
+      { cardName: "The Sun", subName: "ดวงอาทิตย์แห่งความสำเร็จ", icon: "☀️", color: "text-amber-400", meaning: "ปีนี้จะเป็นปีที่สว่างไสวที่สุดของคุณเลยล่ะ! ความสำเร็จ ความสุข และความก้าวหน้าจะพุ่งเข้ามาหาแบบฉุดไม่อยู่ เตรียมตัวรับข่าวดีและรอยยิ้มได้เลย" },
+      { cardName: "Wheel of Fortune", subName: "กงล้อแห่งโชคชะตา", icon: "🎡", color: "text-gold-400", meaning: "จังหวะชีวิตขาขึ้นกำลังมาเยือน! โชคลาภ โอกาสใหม่ๆ และเรื่องเซอร์ไพรส์ดีๆ จะหลั่งไหลเข้ามา หยิบจับอะไรก็เป็นเงินเป็นทองไปหมดในปีนี้" },
+      { cardName: "The Empress", subName: "ความอุดมสมบูรณ์", icon: "👑", color: "text-pink-400", meaning: "ออร่าความดูดีจะพุ่งสูงสุด! ปีนี้จะมีคนคอยช่วยเหลืออุปถัมภ์ ทำอะไรก็ราบรื่น สุขภาพกายใจสมบูรณ์ เป็นปีที่เต็มอิ่มไปด้วยความรัก" },
+      { cardName: "The Star", subName: "ดวงดาวแห่งความหวัง", icon: "✨", color: "text-cyan-400", meaning: "สิ่งที่คุณปรารถนาและตั้งเป้าหมายไว้จะกลายเป็นจริง! ปีนี้หัวใจคุณจะเต็มไปด้วยแรงบันดาลใจและพลังบวก เป็นปีแห่งการเยียวยาและเติบโต" },
+      { cardName: "The Chariot", subName: "อัศวินผู้คว้าชัยชนะ", icon: "🐎", color: "text-red-400", meaning: "อุปสรรคใดๆ ก็ทำอะไรคุณไม่ได้! ปีนี้คุณจะมีพลังใจเต็มเปี่ยม ลุยโปรเจกต์ไหนก็สำเร็จทะลุเป้าหมายอย่างงดงามด้วยความมุ่งมั่นของคุณเอง" },
+      { cardName: "The Magician", subName: "ผู้เนรมิตความฝัน", icon: "🪄", color: "text-indigo-400", meaning: "คุณมีเวทมนตร์อยู่ในมือ! ปีนี้ไอเดียและความสามารถของคุณจะโดดเด่นมากเป็นพิเศษ หยิบจับอะไรก็เป็นรูปเป็นร่าง สำเร็จได้ดั่งใจนึกราวกับเสกได้" },
+      { cardName: "The Fool", subName: "การเริ่มต้นการผจญภัย", icon: "🎒", color: "text-emerald-400", meaning: "บทใหม่ของชีวิตกำลังจะเริ่มต้นขึ้น! ไพ่ใบนี้สนับสนุนให้คุณลองทำสิ่งใหม่ๆ เป็นปีแห่งอิสระ การเดินทาง และการค้นพบตัวเอง อย่ากลัวที่จะก้าวออกจากเซฟโซน" },
+      { cardName: "The High Priestess", subName: "สัญชาตญาณอันแม่นยำ", icon: "🌙", color: "text-purple-300", meaning: "ลางสังหรณ์ของคุณในปีนี้จะแม่นยำมากเป็นพิเศษ! เชื่อมั่นในตัวเองและฟังเสียงกระซิบจากหัวใจ มันจะนำทางคุณไปสู่การตัดสินใจที่ดีที่สุด" },
+      { cardName: "The Lovers", subName: "ความรักและความกลมเกลียว", icon: "💖", color: "text-rose-400", meaning: "ปีที่อบอวลไปด้วยความรักและความสัมพันธ์ที่ดี! ไม่ว่าจะเป็นคนรัก ครอบครัว หรือมิตรภาพ ความสัมพันธ์จะแน่นแฟ้นและนำพาความสบายใจมาให้อย่างเต็มเปี่ยม" },
+      { cardName: "The World", subName: "ความสมบูรณ์แบบ", icon: "🌍", color: "text-teal-400", meaning: "การเดินทางที่แสนยาวนานจะผลิดอกออกผล! ปีนี้คือจุดสูงสุดของความสมบูรณ์แบบ สิ่งที่คุณทุ่มเทมานานจะสำเร็จลงตัวราวกับจิ๊กซอว์ชิ้นสุดท้าย" },
+      { cardName: "Strength", subName: "พลังแห่งความเข้มแข็ง", icon: "🦁", color: "text-orange-400", meaning: "ความกล้าหาญในตัวคุณจะเปล่งประกาย ไม่ว่าเจอเรื่องท้าทายแค่ไหน คุณจะผ่านมันไปได้อย่างสง่างามและได้รับความเคารพจากทุกคน" },
+      { cardName: "Justice", subName: "ความสมดุลและยุติธรรม", icon: "⚖️", color: "text-blue-400", meaning: "ทุกสิ่งที่คุณเคยทำดีไว้จะส่งผลตอบแทนอย่างงดงาม ความสมดุลจะกลับคืนสู่ชีวิตของคุณ เตรียมรับผลลัพธ์ที่น่ายินดีได้เลย" },
+      { cardName: "Temperance", subName: "ความพอดีและกลมกลืน", icon: "🕊️", color: "text-teal-300", meaning: "ปีแห่งการเยียวยาและการผสมผสานที่ลงตัว ทั้งการงานและการใช้ชีวิตจะสมดุล สุขภาพจิตใจจะสงบร่มเย็นและมีความสุขจากภายใน" },
+      { cardName: "Ace of Wands", subName: "จุดเริ่มต้นของแรงบันดาลใจ", icon: "🔥", color: "text-red-500", meaning: "ไฟแห่งแพสชันถูกจุดขึ้นแล้ว! โปรเจกต์ใหม่หรืองานที่กำลังจะเริ่ม จะเต็มไปด้วยพลังงานบวกและนำพาความสำเร็จที่ยิ่งใหญ่มาให้" },
+      { cardName: "Ace of Cups", subName: "ความรักและความสุขล้นปรี่", icon: "🏆", color: "text-rose-500", meaning: "หัวใจของคุณจะเต็มเปี่ยมไปด้วยความรักและความเมตตา จะมีคนดีๆ เข้ามาในชีวิต ความสัมพันธ์ที่ทำให้คุณยิ้มได้กว้างกว่าเดิมกำลังรออยู่" },
+      { cardName: "Ace of Pentacles", subName: "โอกาสทองและความมั่งคั่ง", icon: "🪙", color: "text-yellow-400", meaning: "ประตูแห่งความมั่งคั่งเปิดออกแล้ว! โอกาสใหม่ทางการเงิน การลงทุน หรือการงานที่ดีมากๆ จะหล่นทับคุณ จับตาดูให้ดีล่ะ" },
+      { cardName: "Ace of Swords", subName: "ความคิดเฉียบแหลมและชัยชนะ", icon: "⚔️", color: "text-slate-300", meaning: "สมองแล่นสุดๆ! ปัญหาที่เคยค้างคาจะถูกแก้ไขด้วยสติปัญญาของคุณ การสื่อสารจะชัดเจน และคุณจะชนะในทุกการเจรจา" },
+      { cardName: "Ten of Cups", subName: "ความสุขสมบูรณ์ดั่งสายรุ้ง", icon: "🌈", color: "text-pink-300", meaning: "ภาพฝันของการมีชีวิตที่มีความสุขกำลังจะเป็นจริง เป็นปีที่คุณจะได้พักพิงในพื้นที่ที่ปลอดภัยและเต็มไปด้วยความรักอย่างแท้จริง" },
+      { cardName: "Ten of Pentacles", subName: "ความมั่นคงและความมั่งคั่ง", icon: "🏡", color: "text-amber-500", meaning: "รากฐานชีวิตของคุณจะแข็งแกร่งมาก ทั้งเรื่องครอบครัว และทรัพย์สิน จะมีความมั่นคงทางการเงินระยะยาวให้คุณได้อุ่นใจ" },
+      { cardName: "Nine of Cups", subName: "ความปรารถนาที่เป็นจริง", icon: "🧞", color: "text-purple-400", meaning: "นี่คือ 'ไพ่ขอพร' สมปรารถนา! สิ่งที่คุณแอบหวังหรือตั้งเป้าไว้ลึกๆ ในใจ จะสำเร็จลุล่วงและทำให้คุณอิ่มเอมใจอย่างที่สุด" },
+      { cardName: "Six of Wands", subName: "ชัยชนะและการยอมรับ", icon: "🏅", color: "text-yellow-500", meaning: "เตรียมตัวรับเสียงปรบมือ! ความพยายามของคุณจะถูกมองเห็น คุณจะได้รับคำชม การเลื่อนขั้น หรือการยอมรับจากคนรอบข้างอย่างน่าภูมิใจ" },
+      { cardName: "Four of Wands", subName: "การเฉลิมฉลองและความยินดี", icon: "🎊", color: "text-red-400", meaning: "จะมีข่าวดีที่ทำให้ต้องจัดงานฉลอง! ไม่ว่าจะเป็นความสำเร็จส่วนตัว หรือข่าวดีจากคนใกล้ชิด ชีวิตช่วงนี้จะมีแต่รอยยิ้มและงานรื่นเริง" },
+      { cardName: "Three of Cups", subName: "มิตรภาพและการเฉลิมฉลอง", icon: "🥂", color: "text-pink-400", meaning: "แก๊งเพื่อนจะนำพาความสุขมาให้! ปีนี้คุณจะมีเกณฑ์ได้สังสรรค์ หรือพบปะกัลยาณมิตรที่จะคอยซัพพอร์ตและทำให้คุณหัวเราะได้ตลอด" },
+      { cardName: "The Hierophant", subName: "สิ่งศักดิ์สิทธิ์คุ้มครอง", icon: "🏛️", color: "text-stone-300", meaning: "ผู้ใหญ่จะเอ็นดูและคอยให้ความช่วยเหลือ มีสิ่งศักดิ์สิทธิ์คุ้มครองให้แคล้วคลาดปลอดภัย และคุณจะได้ค้นพบความสงบสุขทางจิตใจ" },
+      { cardName: "Queen of Wands", subName: "เสน่ห์และความมั่นใจ", icon: "💃", color: "text-rose-400", meaning: "ออร่าความตัวแม่จับสุดๆ! ปีนี้คุณจะมีความมั่นใจ เสน่ห์แรง และดึงดูดสิ่งดีๆ เข้ามา ไม่ว่าจะหยิบจับอะไรก็โดดเด่นและผ่านฉลุย" },
+      { cardName: "King of Pentacles", subName: "ความสำเร็จและการเงิน", icon: "👑", color: "text-amber-400", meaning: "สถานะทางการเงินของคุณจะยกระดับขึ้นไปอีกขั้น คุณจะจัดการเรื่องเงินทองได้อย่างชาญฉลาด และมีความเป็นอยู่ที่อุดมสมบูรณ์" },
+      { cardName: "The Moon", subName: "จินตนาการและแรงบันดาลใจ", icon: "🌕", color: "text-blue-300", meaning: "เซนส์และแรงบันดาลใจของคุณจะลื่นไหลมากในปีนี้! งานสายครีเอทีฟหรือศิลปะจะพุ่งกระฉูด ให้เชื่อในสัญชาตญาณลึกๆ ของตัวเองไว้" },
+      { cardName: "Eight of Wands", subName: "ความก้าวหน้าก้าวกระโดด", icon: "🚀", color: "text-orange-500", meaning: "ทุกอย่างจะพุ่งทะยานไปข้างหน้าอย่างรวดเร็ว! เรื่องที่เคยติดขัดจะได้รับการปลดล็อก และจะมีข่าวดีบินตรงมาหาคุณเร็วกว่าที่คิด" },
+      { cardName: "Page of Cups", subName: "ข่าวดีและแรงบันดาลใจใหม่", icon: "💌", color: "text-cyan-300", meaning: "จะมีข้อความน่ารักๆ หรือข่าวดีมาเคาะประตูบ้านคุณ! เป็นปีที่คุณจะได้สัมผัสกับความรู้สึกบริสุทธิ์สดใส มีสิ่งดีๆ ทำให้ใจฟู" },
+      { cardName: "Knight of Pentacles", subName: "ความก้าวหน้าที่มั่นคง", icon: "🛡️", color: "text-emerald-500", meaning: "ช้าแต่ชัวร์! แผนที่คุณวางไว้จะดำเนินไปอย่างมั่นคงแข็งแรง ทุกย่างก้าวของคุณในปีนี้จะนำไปสู่ผลลัพธ์ที่ยั่งยืนและปลอดภัยแน่นอน" }
+    ];
+
+    let isDealt = false;
+    let hasSelected = false;
+
+    // ── Deal Cards Animation ───────────────────────
+    function dealCards() {
+      if (isDealt) return;
+      isDealt = true;
+
+      const deck = document.getElementById('card-deck');
+      const hint = document.getElementById('deck-hint');
+      const subtitleContainer = document.getElementById('hero-subtitle-container');
+
+      // 1. Shuffling Phase (รวบรวมพลังงาน)
+      deck.classList.add('is-shuffling');
+      hint.style.opacity = '0';
+      subtitleContainer.innerHTML = '<span class="text-purple-300 font-sans text-sm sm:text-base tracking-widest uppercase animate-pulse">✨ กำลังรวบรวมพลังงานจักรวาล... ✨</span>';
+
+      setTimeout(() => {
+        // 2. Hide Deck
+        deck.style.transform = 'scale(0) rotate(180deg)';
+        deck.style.opacity = '0';
+        deck.classList.remove('is-shuffling');
+
+        setTimeout(() => {
+          document.getElementById('deck-section').style.display = 'none';
+
+          subtitleContainer.innerHTML = '<span class="px-5 py-1.5 rounded-full bg-gold-500/20 text-gold-300 font-semibold tracking-wide border border-gold-500/30 shadow-[0_0_15px_rgba(212,160,23,0.3)]">ตั้งจิตอธิษฐาน แล้วเลือกไพ่ 1 ใบ</span>';
+
+          const dealtArea = document.getElementById('dealt-area');
+          dealtArea.style.display = 'block';
+
+          const container = document.getElementById('dealt-cards-container');
+          container.innerHTML = '';
+
+          // แจกไพ่โดยไล่เวลาทีละใบ (Flying in effect)
+          for (let i = 0; i < 10; i++) {
+            const cardEl = createTarotCardElement();
+            container.appendChild(cardEl);
+
+            setTimeout(() => cardEl.classList.add('visible'), 120 * (i + 1));
+          }
+
+        }, 500);
+      }, 1500); // ระยะเวลาเขย่าไพ่ 1.5 วิ
+    }
+
+    // ── Create Card Template ───────────────────────
+    function createTarotCardElement() {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'dealt-card card-scene cursor-pointer flex-none aspect-[2/3] w-[70px] sm:w-[100px] lg:w-[130px]';
+
+      wrapper.onclick = () => selectCard(wrapper);
+
+      wrapper.innerHTML = `
+        <div class="card-aura"></div>
+        <div class="card-inner w-full h-full">
+          <div class="card-face card-back tarot-back-pattern border-[1.5px] sm:border-2 border-purple-500/50 flex items-center justify-center relative shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
+            <div class="absolute inset-1 sm:inset-2 border border-purple-400/30 rounded-sm"></div>
+            <div class="w-6 h-6 sm:w-10 sm:h-10 border border-gold-400/60 rotate-45 flex items-center justify-center">
+              <span class="text-gold-300 text-[10px] sm:text-lg -rotate-45">🔮</span>
+            </div>
+          </div>
+          <div class="card-face card-front border-[1.5px] sm:border-2 border-gold-500 bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-1 sm:p-2 text-center shadow-[0_0_30px_rgba(212,160,23,0.5)]">
+            <div class="front-content w-full h-full flex flex-col items-center justify-center"></div>
+          </div>
+        </div>
+      `;
+      return wrapper;
+    }
+
+    // ── Select Card Logic (Dramatic Flip) ──────────
+    function selectCard(clickedCard) {
+      if (hasSelected) return;
+      hasSelected = true;
+
+      const fortune = fortuneData[Math.floor(Math.random() * fortuneData.length)];
+
+      const frontContent = clickedCard.querySelector('.front-content');
+      frontContent.innerHTML = `
+        <div class="absolute inset-1 sm:inset-1.5 border border-gold-500/40 rounded-sm"></div>
+        <span class="text-2xl sm:text-4xl lg:text-5xl mb-1 sm:mb-2 filter drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">${fortune.icon}</span>
+        <h2 class="font-serif text-[8px] sm:text-xs lg:text-sm font-bold text-gold-300 tracking-tight leading-tight px-1">${fortune.cardName}</h2>
+        <div class="w-6 sm:w-10 h-px bg-gold-500/50 my-1 sm:my-1.5"></div>
+        <p class="font-sans text-[6px] sm:text-[9px] lg:text-[10px] ${fortune.color} font-medium tracking-wider uppercase leading-tight px-1">${fortune.subName}</p>
+      `;
+
+      // 1. ยกไพ่ที่เลือกขึ้นมาตรงกลาง และลดความสว่างใบอื่นให้หายไป
+      clickedCard.classList.add('selected');
+      const allCards = document.querySelectorAll('.dealt-card');
+      allCards.forEach(card => {
+        if (card !== clickedCard) {
+          card.classList.add('unselected');
+        }
+      });
+
+      document.getElementById('hero-subtitle-container').innerHTML = '<span class="text-gold-300 font-semibold tracking-widest uppercase animate-pulse">กำลังอ่านคำทำนาย...</span>';
+
+      // 2. หน่วงเวลาให้ใบที่เลือกลอยขึ้นสุดก่อน แล้วค่อยพลิก (Dramatic effect)
+      setTimeout(() => {
+        clickedCard.querySelector('.card-inner').classList.add('flipped');
+        spawnSparkles(clickedCard);
+
+        setTimeout(() => launchConfetti(), 400); // พลุกระดาษตอนพลิกหน้าไพ่เสร็จ
+
+        // 3. แสดงกล่องข้อความ
+        setTimeout(() => showFortuneTeller(fortune), 1000);
+      }, 800);
+    }
+
+    // ── Show Fortune Teller Dialogue ───────────────
+    function showFortuneTeller(fortuneData) {
+      document.getElementById('hero-subtitle-container').innerHTML = '<span class="text-gold-300 font-semibold tracking-widest uppercase">ผลคำทำนายของคุณ</span>';
+
+      const box = document.getElementById('fortune-teller-box');
+      const nameEl = document.getElementById('fortune-card-name');
+      const msgEl = document.getElementById('fortune-message');
+      const resetBtn = document.getElementById('reset-btn');
+
+      nameEl.textContent = `ไพ่ประจำปีนี้: ${fortuneData.cardName} - ${fortuneData.subName}`;
+
+      // Typewriter effect สำหรับข้อความ
+      msgEl.innerHTML = '';
+      const textToType = `"${fortuneData.meaning}"`;
+      let i = 0;
+
+      box.classList.add('visible');
+
+      // พิมพ์ทีละตัวอักษร
+      const typeWriter = setInterval(() => {
+        if (i < textToType.length) {
+          msgEl.innerHTML += textToType.charAt(i);
+          i++;
+        } else {
+          clearInterval(typeWriter);
+          // Highlight quote marks after typing
+          msgEl.innerHTML = `<span class="text-gold-300 font-semibold text-lg">"</span>${fortuneData.meaning}<span class="text-gold-300 font-semibold text-lg">"</span>`;
+          setTimeout(() => resetBtn.classList.add('visible'), 500);
+        }
+      }, 30); // ความเร็วในการพิมพ์ (ms)
+
+      document.getElementById('pc-icon').textContent = fortuneData.icon;
+      document.getElementById('pc-title').textContent = fortuneData.cardName;
+      document.getElementById('pc-subtitle').textContent = fortuneData.subName;
+      document.getElementById('pc-meaning').textContent = fortuneData.meaning;
+    }
+
+    // ── อัปโหลดรูปภาพ ──────────────────────────────
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          document.getElementById('pc-image').src = e.target.result;
+
+          document.getElementById('upload-status').classList.remove('hidden');
+          const exportBtn = document.getElementById('export-btn');
+          exportBtn.disabled = false;
+          exportBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          exportBtn.classList.add('hover:scale-105');
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // ── Export Postcard ────────────────────────────
+    function exportPostcard() {
+      const exportBtn = document.getElementById('export-btn');
+      const originalText = exportBtn.innerHTML;
+
+      exportBtn.innerHTML = '⏳ กำลังสร้างโปสการ์ด...';
+      exportBtn.disabled = true;
+
+      const template = document.getElementById('postcard-template');
+
+      html2canvas(template, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0f172a'
+      }).then(canvas => {
+        canvas.toBlob(function (blob) {
+          if (blob === null) {
+            alert('เกิดข้อผิดพลาดในการสร้างไฟล์รูปภาพ');
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = 'My_Birthday_Fortune.png';
+          link.href = url;
+
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          exportBtn.innerHTML = originalText;
+          exportBtn.disabled = false;
+        }, 'image/png');
+
+      }).catch(err => {
+        console.error("Export Error: ", err);
+        alert('เกิดข้อผิดพลาดในการสร้างรูปภาพ กรุณาลองใหม่อีกครั้ง');
+        exportBtn.innerHTML = originalText;
+        exportBtn.disabled = false;
+      });
+    }
+
+    // ── Reset ──────────────────────────────────────
+    function resetDeck() {
+      isDealt = false;
+      hasSelected = false;
+
+      document.getElementById('photo-upload').value = "";
+      document.getElementById('pc-image').src = "";
+      document.getElementById('upload-status').classList.add('hidden');
+      const exportBtn = document.getElementById('export-btn');
+      exportBtn.disabled = true;
+      exportBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      exportBtn.classList.remove('hover:scale-105');
+
+      document.getElementById('fortune-teller-box').classList.remove('visible');
+      document.getElementById('reset-btn').classList.remove('visible');
+      document.getElementById('dealt-area').style.display = 'none';
+
+      document.getElementById('hero-subtitle-container').innerHTML = '<p id="hero-subtitle" class="font-sans text-sm sm:text-base text-purple-300/80 tracking-widest uppercase animate-pulseGlow">รับคำทำนายดวงชะตาในปีนี้ของคุณ</p>';
+
+      const deckSection = document.getElementById('deck-section');
+      deckSection.style.display = 'flex';
+      setTimeout(() => {
+        document.getElementById('card-deck').style.transform = '';
+        document.getElementById('card-deck').style.opacity = '1';
+        document.getElementById('deck-hint').style.opacity = '1';
+      }, 50);
+    }
+
+    // ── Effects ───────────────────────────────────
+    function spawnSparkles(target) {
+      const rect = target.getBoundingClientRect();
+      const colors = ['#ffd966', '#a855f7', '#3b82f6'];
+      for (let i = 0; i < 20; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'sparkle-particle animate-sparkle';
+        spark.style.background = colors[Math.floor(Math.random() * colors.length)];
+        spark.style.left = rect.left + (Math.random() * rect.width) + 'px';
+        spark.style.top = rect.top + (Math.random() * rect.height) + 'px';
+        spark.style.zIndex = '60';
+        document.body.appendChild(spark);
+        setTimeout(() => spark.remove(), 800);
+      }
+    }
+
+    function launchConfetti() {
+      const colors = ['#ffd966', '#e63946', '#a855f7', '#34d399', '#f472b6'];
+      for (let i = 0; i < 40; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece animate-confetti';
+        el.textContent = ['■', '●', '▲', '★', '♦'][Math.floor(Math.random() * 5)];
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.color = colors[Math.floor(Math.random() * colors.length)];
+        el.style.fontSize = (10 + Math.random() * 15) + 'px';
+        el.style.animationDuration = (2 + Math.random() * 2) + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }
+    }
+
+    function createAmbientParticles() {
+      const container = document.getElementById('ambient-particles');
+      const colors = ['rgba(212,160,23,0.3)', 'rgba(168,85,247,0.2)', 'rgba(52,211,153,0.2)'];
+      for (let i = 0; i < 25; i++) {
+        const p = document.createElement('div');
+        p.className = 'ambient-particle';
+        const size = 2 + Math.random() * 4;
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        p.style.animationDuration = (8 + Math.random() * 15) + 's';
+        p.style.animationDelay = Math.random() * 10 + 's';
+        container.appendChild(p);
+      }
+    }
+
+    createAmbientParticles();
+  </script>
+</body>
+
+</html>
