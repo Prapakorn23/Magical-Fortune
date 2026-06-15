@@ -353,7 +353,8 @@
     <!-- ─── THE DECK ────────────────────────────── -->
     <section id="deck-section" class="relative flex flex-col items-center z-10">
       <div
-        class="absolute inset--8 rounded-full background: radial-gradient(circle, rgba(212,160,23,0.08) 0%, transparent 70%); animate-shimmer pointer-events-none">
+        class="absolute -inset-8 rounded-full animate-shimmer pointer-events-none"
+        style="background: radial-gradient(circle, rgba(212,160,23,0.08) 0%, transparent 70%);">
       </div>
 
       <div id="card-deck"
@@ -643,7 +644,7 @@
     }
 
     // ── Show Fortune Teller Dialogue ───────────────
-    function showFortuneTeller(fortuneData) {
+    function showFortuneTeller(fortune) {
       document.getElementById('hero-subtitle-container').innerHTML = '<span class="text-gold-300 font-semibold tracking-widest uppercase text-sm">ผลคำทำนายของคุณ</span>';
 
       const box = document.getElementById('fortune-teller-box');
@@ -651,13 +652,13 @@
       const msgEl = document.getElementById('fortune-message');
       const resetBtn = document.getElementById('reset-btn');
 
-      nameEl.textContent = `ไพ่ประจำปีนี้: ${fortuneData.cardName} - ${fortuneData.subName}`;
-      msgEl.innerHTML = `<span class="text-gold-300 font-semibold text-lg">"</span>${fortuneData.meaning}<span class="text-gold-300 font-semibold text-lg">"</span>`;
+      nameEl.textContent = `ไพ่ประจำปีนี้: ${fortune.cardName} - ${fortune.subName}`;
+      msgEl.innerHTML = `<span class="text-gold-300 font-semibold text-lg">"</span>${fortune.meaning}<span class="text-gold-300 font-semibold text-lg">"</span>`;
 
-      document.getElementById('pc-icon').textContent = fortuneData.icon;
-      document.getElementById('pc-title').textContent = fortuneData.cardName;
-      document.getElementById('pc-subtitle').textContent = fortuneData.subName;
-      document.getElementById('pc-meaning').textContent = fortuneData.meaning;
+      document.getElementById('pc-icon').textContent = fortune.icon;
+      document.getElementById('pc-title').textContent = fortune.cardName;
+      document.getElementById('pc-subtitle').textContent = fortune.subName;
+      document.getElementById('pc-meaning').textContent = fortune.meaning;
 
       box.classList.add('visible');
       setTimeout(() => resetBtn.classList.add('visible'), 500);
